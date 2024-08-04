@@ -1,32 +1,67 @@
-import { Component } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
+import * as ace from "ace-builds";
 
 @Component({
   selector: 'app-root',
   template: `
     <!--The content below is only a placeholder and can be replaced.-->
-    <div style="text-align:center" class="content">
-      <h1>
-        Welcome to {{title}}!
-      </h1>
-      <span style="display: block">{{ title }} app is running!</span>
-      <img width="300" alt="Angular Logo" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAgMjUwIj4KICAgIDxwYXRoIGZpbGw9IiNERDAwMzEiIGQ9Ik0xMjUgMzBMMzEuOSA2My4ybDE0LjIgMTIzLjFMMTI1IDIzMGw3OC45LTQzLjcgMTQuMi0xMjMuMXoiIC8+CiAgICA8cGF0aCBmaWxsPSIjQzMwMDJGIiBkPSJNMTI1IDMwdjIyLjItLjFWMjMwbDc4LjktNDMuNyAxNC4yLTEyMy4xTDEyNSAzMHoiIC8+CiAgICA8cGF0aCAgZmlsbD0iI0ZGRkZGRiIgZD0iTTEyNSA1Mi4xTDY2LjggMTgyLjZoMjEuN2wxMS43LTI5LjJoNDkuNGwxMS43IDI5LjJIMTgzTDEyNSA1Mi4xem0xNyA4My4zaC0zNGwxNy00MC45IDE3IDQwLjl6IiAvPgogIDwvc3ZnPg==">
+    <div class="app-ace-editor"
+      #editor
+      style="width: 500px;height: 250px;">
+      
     </div>
-    <h2>Here are some links to help you start: </h2>
-    <ul>
-      <li>
-        <h2><a target="_blank" rel="noopener" href="https://angular.io/tutorial">Tour of Heroes</a></h2>
-      </li>
-      <li>
-        <h2><a target="_blank" rel="noopener" href="https://angular.io/cli">CLI Documentation</a></h2>
-      </li>
-      <li>
-        <h2><a target="_blank" rel="noopener" href="https://blog.angular.io/">Angular blog</a></h2>
-      </li>
-    </ul>
     
   `,
   styles: []
 })
-export class AppComponent {
+export class AppComponent implements AfterViewInit {
   title = 'ace-angular';
+
+  @ViewChild("editor") private editor: ElementRef<HTMLElement>;
+
+  ngAfterViewInit(): void {
+    ace.config.set("fontSize", "14px");
+  //   console.log('base:', ace.config.get('basePath'));
+    ace.config.set('basePath', '/assets/ace');
+  //   console.log('base after:', ace.config.get('basePath'));
+    ace.config.moduleUrl = (name, component) => {
+      var parts = name.split("/");
+      component = component || parts[parts.length - 2] || "";
+  
+      var sep = component == "snippets" ? "/" : "-";
+      var base = parts[parts.length - 1];
+      if (component == "worker" && sep == "-") {
+          var re = new RegExp("^" + component + "[\\-_]|[\\-_]" + component + "$", "g");
+          base = base.replace(re, "");
+      }
+  
+      if ((!base || base == component) && parts.length > 1)
+          base = parts[parts.length - 2];
+      console.log('name:', name);
+      console.log('component:', component);
+      var path = null;
+      if (path == null) {
+          path = ace.config.get('basePath');
+      }
+      if (sep == "/") {
+          component = sep = "";
+      }
+      if (path && path.slice(-1) != "/")
+          path += "/";
+      return path + component + sep + base + ace.config.get("suffix");
+    };
+    // not able to load worker here
+    // ace.config.setModuleUrl('ace/mode/yaml', '/assets/ace/mode-yaml.js');
+    // ace.config.setModuleUrl('ace/theme/twilight', '/assets/ace/theme-twilight.js');
+    const aceEditor: ace.Ace.Editor = ace.edit(this.editor.nativeElement);
+    // aceEditor.session.setOption('basePath', '/assets/ace');
+    aceEditor.session.setValue(`
+    hi:
+      abc:
+        test: value
+      `);
+    aceEditor.setTheme('ace/theme/twilight');
+    aceEditor.session.setMode('ace/mode/yaml');
+  }
 }
+
