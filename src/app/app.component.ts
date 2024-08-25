@@ -1,5 +1,6 @@
-import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import * as ace from "ace-builds";
+import DataConverter from './DataConverter';
 
 @Component({
   selector: 'app-root',
@@ -14,10 +15,50 @@ import * as ace from "ace-builds";
   `,
   styles: []
 })
-export class AppComponent implements AfterViewInit {
+export class AppComponent implements OnInit, AfterViewInit {
+
   title = 'ace-angular';
 
   @ViewChild("editor") private editor: ElementRef<HTMLElement>;
+
+  currentDataType = 'yaml';
+  data = `
+hi:
+  abc:
+    test: value
+  `;
+
+
+  ngOnInit(): void {
+    let output = new DataConverter()
+      .fromProperties('server.port = 8080')
+      .convert()
+      .toYaml();
+
+    console.log('output from properties to yaml : \n', output);
+
+    output = new DataConverter()
+      .fromProperties('server.port = 8080')
+      .convert()
+      .toJson();
+
+    console.log('output from properties to json : \n', output);
+
+    output = new DataConverter()
+      .fromJson(JSON.stringify({a: {b: 1}, c: 2}))
+      .convert()
+      .toYaml();
+
+    console.log('output from json to yaml : \n');
+    console.log(output);
+
+
+    output = new DataConverter()
+      .fromYaml(this.data)
+      .convert()
+      .toJson();
+    console.log('output from yaml to json : \n', output);
+  }
 
   ngAfterViewInit(): void {
     ace.config.set("fontSize", "14px");
@@ -55,11 +96,7 @@ export class AppComponent implements AfterViewInit {
     // ace.config.setModuleUrl('ace/theme/twilight', '/assets/ace/theme-twilight.js');
     const aceEditor: ace.Ace.Editor = ace.edit(this.editor.nativeElement);
     // aceEditor.session.setOption('basePath', '/assets/ace');
-    aceEditor.session.setValue(`
-    hi:
-      abc:
-        test: value
-      `);
+    aceEditor.session.setValue(this.data);
     aceEditor.setTheme('ace/theme/twilight');
     aceEditor.session.setMode('ace/mode/yaml');
   }
