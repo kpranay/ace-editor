@@ -58,6 +58,17 @@ hi:
       .convert()
       .toJson();
     console.log('output from yaml to json : \n', output);
+
+    output = new DataConverter()
+      .fromYaml(this.data)
+      .convert()
+      .toProperties();
+    console.log('output from yaml to properties : \n', output);
+    output = new DataConverter()
+      .fromJson(JSON.stringify({a: {b: 1}, c: 2}))
+      .convert()
+      .toProperties();
+    console.log('output from json to properties : \n', output);
   }
 
   ngAfterViewInit(): void {

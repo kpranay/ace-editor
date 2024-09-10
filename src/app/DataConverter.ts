@@ -135,6 +135,55 @@ export class DataConverter {
     throw new Error("unsupported");
   }
 
+  public toProperties() {
+    if (!this._internalStructure) {
+      throw new Error('Output of conversion is empty! Did you call convert() method?');
+    }
+
+    return this.objectToPropertiesFile(this._internalStructure);
+  }
+
+  private objectToPropertiesFile(obj) {
+    const flattened = this.flattenObject(obj);
+    return Object.entries(flattened)
+        .map(([key, value]) => `${key}=${value}`)
+        .join('\n');
+  }
+
+  private flattenObject(obj, parentKey = '', result = {}) {
+    for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            const value = obj[key];
+            const newKey = parentKey ? `${parentKey}.${key}` : key;
+
+            if (Array.isArray(value)) {
+                value.forEach((item, index) => {
+                    const arrayKey = `${newKey}[${index}]`;
+                    if (item && typeof item === 'object') {
+                        this.flattenObject(item, arrayKey, result);
+                    } else {
+                        result[arrayKey] = this.escapePropertyValue(String(item));
+                    }
+                });
+            } else if (value && typeof value === 'object') {
+                this.flattenObject(value, newKey, result);
+            } else {
+                result[newKey] = this.escapePropertyValue(String(value));
+            }
+        }
+    }
+    return result;
+  }
+
+  private escapePropertyValue(value) {
+    if (typeof value !== 'string') return value;
+    return value
+        .replace(/\\/g, '\\\\') // Escape backslashes
+        .replace(/=/g, '\\=')   // Escape equals signs
+        .replace(/\n/g, '\\n')  // Escape new lines
+        .replace(/\r/g, '\\r'); // Escape carriage returns
+  }
+
   public spaces(spaces: number): DataConverter {
     this._spaces = spaces;
     return this;
