@@ -26,49 +26,68 @@ export class AppComponent implements OnInit, AfterViewInit {
 hi:
   abc:
     test: value
+    t:
+      - 1
+      - 2
   `;
 
 
   ngOnInit(): void {
+    
+// Example usage
+const properties = `
+server.port = 8080
+server.test[0].a=1
+server.test[1].a=2
+hi.abc.t[0]=1
+hi.abc.t[1]=2
+`;
+
+
     let output = new DataConverter()
-      .fromProperties('server.port = 8080')
+      .fromProperties(properties)
       .convert()
       .toYaml();
 
     console.log('output from properties to yaml : \n', output);
 
-    output = new DataConverter()
-      .fromProperties('server.port = 8080')
-      .convert()
-      .toJson();
+    // output = new DataConverter()
+    //   .fromProperties(`
+    //     server.port = 8080
+    //     server.test[0]=1
+    //     server.test[1]=2
+    //     hi.abc.t[0]=1
+    //     hi.abc.t[1]=2`)
+    //   .convert()
+    //   .toJson();
 
-    console.log('output from properties to json : \n', output);
+    // console.log('output from properties to json : \n', output);
 
-    output = new DataConverter()
-      .fromJson(JSON.stringify({a: {b: 1}, c: 2}))
-      .convert()
-      .toYaml();
+    // output = new DataConverter()
+    //   .fromJson(JSON.stringify({a: {b: 1}, c: 2}))
+    //   .convert()
+    //   .toYaml();
 
-    console.log('output from json to yaml : \n');
-    console.log(output);
+    // console.log('output from json to yaml : \n');
+    // console.log(output);
 
 
-    output = new DataConverter()
-      .fromYaml(this.data)
-      .convert()
-      .toJson();
-    console.log('output from yaml to json : \n', output);
+    // output = new DataConverter()
+    //   .fromYaml(this.data)
+    //   .convert()
+    //   .toJson();
+    // console.log('output from yaml to json : \n', output);
 
-    output = new DataConverter()
-      .fromYaml(this.data)
-      .convert()
-      .toProperties();
-    console.log('output from yaml to properties : \n', output);
-    output = new DataConverter()
-      .fromJson(JSON.stringify({a: {b: 1}, c: 2}))
-      .convert()
-      .toProperties();
-    console.log('output from json to properties : \n', output);
+    // output = new DataConverter()
+    //   .fromYaml(this.data)
+    //   .convert()
+    //   .toProperties();
+    // console.log('output from yaml to properties : \n', output);
+    // output = new DataConverter()
+    //   .fromJson(JSON.stringify({a: {b: 1}, c: 2}))
+    //   .convert()
+    //   .toProperties();
+    // console.log('output from json to properties : \n', output);
   }
 
   ngAfterViewInit(): void {
@@ -111,5 +130,7 @@ hi:
     aceEditor.setTheme('ace/theme/twilight');
     aceEditor.session.setMode('ace/mode/yaml');
   }
+
+  
 }
 

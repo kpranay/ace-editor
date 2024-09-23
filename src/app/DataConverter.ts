@@ -36,91 +36,124 @@ export class DataConverter {
     } else if(this._inType === 'yaml') {
       this._internalStructure = yaml.load(this._s);
     } else {
-
-      const rows = this._s.split(/\r?\n/); // Splits new lines
-      for (const row of rows) {
-        // If line is empty
-        if (row.trim().length === 0) {
-          // Skip it
-          continue;
-        }
-  
-        const [key, value] = row.split('=').map((part) => part.trim()); // Splits KEY=VALUE and removes white spaces
-        const keys = key.split('.'); // Divides key into array (eg: spring.datasource.url becomes ['spring', 'datasource', 'url'])
-  
-        let v: any = value;
-        // Tries to convert the value to a boolean
-        if (v.toLowerCase() === 'true' || v.toLowerCase() === 'false') {
-          v = v.toLowerCase() === 'true';
-        } else {
-          // If it was not a boolean, then it tries to convert it to a float/int
-          const tryFloat = parseFloat(v);
-          v = !isNaN(tryFloat) ? tryFloat : v; // if it was not a float/int, then it's a string
-        }
-  
-        this._buildInternalStructure(this._internalStructure, keys, v);
-      }
+      this._internalStructure = this.propertiesFileToObject(this._s);
     }
 
     return this;
   }
 
-  private _buildInternalStructure(internalStructure: any, keys: string[], value: any): void {
-    // If it's the last key (base case)
-    if (keys.length === 1) {
-      // Simply write the value in the data structure
-      internalStructure[keys[0]] = value;
-      return;
-    }
+  private unescapePropertyValue(value) {
+    // Replace common escape sequences with their actual characters
+    // return value
+    //     .replace(/\\n/g, '\n')  // Newline
+    //     .replace(/\\r/g, '\r')  // Carriage return
+    //     .replace(/\\t/g, '\t')  // Tab
+    //     .replace(/\\\\/g, '\\') // Backslash
+    //     .replace(/\\"/g, '\"')  // Double quote
+    //     .replace(/\\'/g, '\''); // Single quote
 
-    // If the key does not exist in the data structure
-    if (!internalStructure[keys[0]]) {
-      // Create one with an empty object
-      internalStructure[keys[0]] = {};
-    }
+    // Unescape special characters
+    const unescaped = value
+    .replace(/\\n/g, '\n')   // Unescape new lines
+    .replace(/\\r/g, '\r')   // Unescape carriage returns
+    .replace(/\\=/g, '=')     // Unescape equals signs
+    .replace(/\\\\/g, '\\');  // Unescape backslashes
 
-    /**
-     * Recursively build internal structure by going deeper in the key-path, removing the
-     * first key of the array, which is the one we just processed and pass on the value
-     */
-    this._buildInternalStructure(internalStructure[keys[0]], keys.slice(1), value);
+    // Try to convert to number or boolean
+    if (!isNaN(Number(unescaped))) {
+        return Number(unescaped);
+    }
+    if (unescaped === 'true') {
+        return true;
+    }
+    if (unescaped === 'false') {
+        return false;
+    }
+    return unescaped; // Return as string if not a number or boolean
   }
 
-  private _buildOutputFromInternalStructure(internalStructure: any, depth = 0): string {
+  private propertiesFileToObject(properties: string): any {
+    const result = {};
+
+    properties.split('\n').forEach(line => {
+        line = line.trim();
+        if (!line) return; // Skip empty lines
+
+        const parts = line.split('=');
+        if (parts.length !== 2) return; // Skip invalid lines
+
+        const path = parts[0].trim().replace(/\[(\d+)\]/g, '.$1');
+        const value = this.unescapePropertyValue(parts[1].trim());
+
+        // Create nested structure
+        const keys = path.split('.');
+        let current = result;
+
+        keys.forEach((key, index) => {
+            // If it's the last key, set the value
+            if (index === keys.length - 1) {
+                // Initialize the array if it doesn't exist
+                if (!current[key]) {
+                    current[key] = typeof value === 'number' ? value : [];
+                } else if (Array.isArray(current[key])) {
+                    // Push value to existing array
+                    current[key].push(value);
+                } else {
+                    // Convert existing value to an array and add the new value
+                    current[key] = [current[key], value];
+                }
+            } else {
+                // Initialize object or array if not present
+                current[key] = current[key] || (isNaN(Number(keys[index + 1])) ? {} : []);
+                current = current[key];
+            }
+        });
+    });
+
+    return result;
+  }
+
+  private _buildYamlOutputFromInternalStructure(internalStructure: any, depth = 0): string {
     // Starts with an empty string
     let s = ``;
 
-    // For each key,value pair in the internal structure
-    for (const [key, value] of Object.entries(internalStructure)) {
-      // Write down the key with correct spaces based on the depth
-      s += `${' '.repeat(this._spaces * depth)}${key}:`;
+    // For each key, value pair in the internal structure
+    for (let [key, value] of Object.entries(internalStructure)) {
+        // Write down the key with correct spaces based on the depth
+        s += `${' '.repeat(this._spaces * depth)}${key}:`;
 
-      // If the value is an object
-      if (value !== null && typeof value === 'object') {
-        // Recursively build it, adding one depth
-        s += `\n${this._buildOutputFromInternalStructure(value, depth + 1)}`;
-      } else {
-        // Otherwise it's a primitive type/string
-        // By default values do not have a delimiter
-        let delimiter = '';
-        // If the value is a string
-        if (typeof value === 'string') {
-          // Then we need the " delimiter
-          delimiter = '"';
+        // If the value is an array
+        if (Array.isArray(value)) {
+            s += `\n`;
+            for (const item of value) {
+                s += `${' '.repeat(this._spaces * (depth + 1))}- `;
+                if (item !== null && typeof item === 'object') {
+                    s += `\n${this._buildYamlOutputFromInternalStructure(item, depth + 2)}`;
+                } else {
+                    // If the value is a string
+                    let itemValue = typeof item === 'string' ? JSON.stringify(item) : item;
+                    s += `${itemValue}\n`;
+                }
+            }
+        } else if (value !== null && typeof value === 'object') {
+            // If the value is an object
+            s += `\n${this._buildYamlOutputFromInternalStructure(value, depth + 1)}`;
+        } else {
+            // Otherwise it's a primitive type/string
+            let itemValue = typeof value === 'string' ? JSON.stringify(value) : value;
+            s += ` ${itemValue}\n`;
         }
-        // Write the value
-        s += ` ${delimiter}${value}${delimiter}\n`;
-      }
     }
     return s;
   }
+
 
   public toYaml(): string {
     if (!this._internalStructure) {
       throw new Error('Output of conversion is empty! Did you call convert() method?');
     }
     
-    return this._buildOutputFromInternalStructure(this._internalStructure);
+    return this._buildYamlOutputFromInternalStructure(this._internalStructure);
   }
 
   public toJson(): any {
